@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CỖ MÁY SINH TỒN: HỆ THỐNG KÉP (Bản V5 - Cyberpunk Gacha)</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="data.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; }
+        body { background: #020617; color: #fff; overflow: hidden; overscroll-behavior: none; touch-action: none; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: box-shadow 0.2s;}
+        
+        body.danger-vignette { animation: redAlert 0.5s infinite alternate; }
+        @keyframes redAlert { 0% { box-shadow: inset 0 0 0px rgba(239, 68, 68, 0); } 100% { box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.9); } }
+
+        .cinematic-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 80%); }
+        .grid-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; background-image: linear-gradient(#38bdf8 1px, transparent 1px), linear-gradient(90deg, #38bdf8 1px, transparent 1px); background-size: 30px 30px; }
+
+        .mute-btn { position: absolute; top: 15px; right: 15px; background: rgba(15,23,42,0.85); border: 2px solid #334155; color: #fff; border-radius: 50%; width: 45px; height: 45px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 50; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+        .mute-btn:active { transform: scale(0.9); border-color: #38bdf8; }
+
+        .screen { display: none; width: 100%; height: 100%; max-width: 600px; position: relative; flex-direction: column; align-items: center; padding: 15px; z-index: 2; }
+        .screen.active { display: flex; }
+        
+        #login-screen h1 { font-size: 2.2rem; text-align: center; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.5); margin-bottom: 10px; font-weight: 900; letter-spacing: 1px;}
+        .input-group { width: 100%; margin-bottom: 12px; }
+        input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #334155; background: rgba(15,23,42,0.8); color: #fff; font-size: 1.1rem; text-align: center; outline: none; }
+        input[type="text"]:focus { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.3); }
+        .btn { background: linear-gradient(45deg, #0284c7, #0ea5e9); border: none; padding: 15px 30px; border-radius: 10px; color: #fff; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(2,132,199,0.4); width: 100%; transition: transform 0.1s; text-transform: uppercase; margin-top: 5px;}
+        .btn:active { transform: scale(0.95); }
+        .btn:disabled { filter: grayscale(100%); opacity: 0.5; cursor: not-allowed; transform: none;}
+
+        .hud { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(15,23,42,0.85); border-radius: 10px; margin-bottom: 10px; border: 1px solid #334155; }
+        .hud-item { display: flex; flex-direction: column; align-items: center; }
+        .hud-title { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; }
+        .hud-value { font-size: 1.2rem; font-weight: bold; color: #fff; }
+        .hearts { color: #ef4444; letter-spacing: 2px; }
+
+        .system-panel { width: 100%; background: #0f172a; border: 2px solid #475569; border-radius: 12px; margin-bottom: 10px; position: relative; box-shadow: 0 5px 20px rgba(0,0,0,0.5); overflow: hidden;}
+        .province-badge { background: #facc15; color: #000; padding: 8px 15px; font-weight: 900; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; text-align: center; border-bottom: 2px solid #ca8a04;}
+        .panel-content { padding: 12px;}
+        .alert-box { border-left: 4px solid; padding: 8px 10px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border-radius: 0 8px 8px 0; }
+        .alert-nature { border-color: #22c55e; } 
+        .alert-pop { border-color: #f43f5e; margin-bottom: 0;} 
+        .alert-title { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
+        .alert-nature .alert-title { color: #4ade80; }
+        .alert-pop .alert-title { color: #fb7185; }
+        .alert-desc { font-size: 0.95rem; line-height: 1.3; color: #e2e8f0; }
+        .alert-desc b { color: #facc15; }
+
+        .job-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; flex-grow: 1; margin-bottom: 10px;}
+        .job-btn { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 10px 5px; color: #cbd5e1; font-weight: bold; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.2;}
+        .job-icon { font-size: 1.8rem; margin-bottom: 5px; }
+        .job-btn.selected { background: rgba(56,189,248,0.15); border-color: #38bdf8; color: #fff; box-shadow: 0 0 15px #38bdf8, inset 0 0 10px rgba(56,189,248,0.5); transform: scale(1.03); }
+        .job-btn:active { transform: scale(0.95); }
+
+        .submit-btn { background: linear-gradient(45deg, #d97706, #f59e0b); border: none; padding: 15px; border-radius: 10px; color: #fff; font-size: 1.1rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 15px rgba(245,158,11,0.4); width: 100%; text-transform: uppercase; letter-spacing: 1px; display: none; margin-bottom: 5px;}
+        .submit-btn.show { display: block; animation: pulseSubmit 1s infinite alternate; }
+        @keyframes pulseSubmit { from {box-shadow: 0 0 10px #d97706;} to {box-shadow: 0 0 20px #facc15, 0 0 10px #f59e0b;} }
+
+        .timer-bar { width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-bottom: 10px; border: 1px solid #000; }
+        .timer-fill { height: 100%; background: #38bdf8; width: 100%; transition: width 0.1s linear, background-color 0.3s; }
+        .timer-fill.warning { background: #ef4444; }
+
+        /* VOUCHER CARD THIẾT KẾ CÁ NHÂN HÓA */
+        #voucher-card { background: linear-gradient(135deg, #f8fafc, #e2e8f0); border: 3px solid #0ea5e9; border-radius: 15px; padding: 25px 20px; color: #0f172a; width: 100%; margin-bottom: 15px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3);}
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 3.5rem; color: rgba(2,132,199,0.06); font-weight: bold; pointer-events: none; white-space: nowrap; z-index: 1;}
+        
+        .voucher-header { position: relative; z-index: 2; margin-bottom: 15px; }
+        .voucher-title { font-size: 1.4rem; color: #0284c7; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
+        .voucher-desc { font-size: 0.95rem; font-weight: bold; color: #475569; padding: 0 10px;}
+        
+        .voucher-player { border-top: 2px dashed #cbd5e1; border-bottom: 2px dashed #cbd5e1; padding: 15px 0; margin-bottom: 15px; position: relative; z-index: 2; background: rgba(255,255,255,0.4);}
+        .player-name { font-size: 1.8rem; font-weight: 900; color: #1e293b; text-transform: uppercase; margin-bottom: 5px;}
+        .player-class { font-size: 1.1rem; color: #0f172a; font-weight: bold;}
+        
+        .voucher-rank { font-size: 1.2rem; color: #e11d48; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; position: relative; z-index: 2;}
+        .voucher-score { font-size: 1rem; color: #16a34a; font-weight: bold; margin-bottom: 15px; position: relative; z-index: 2;}
+        
+        .voucher-meta { font-size: 0.75rem; color: #64748b; display: flex; justify-content: space-between; position: relative; z-index: 2;}
+        .voucher-hash { font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.05); padding: 3px 8px; border-radius: 4px; color: #334155;}
+
+        /* CSS TÚI MÙ (CYBERPUNK GACHA) */
+        #blind-bag-container { width: 100%; text-align: center; display: none; }
+        .blind-bags-grid { display: flex; justify-content: center; gap: 15px; margin-top: 15px; margin-bottom: 20px;}
+        
+        .blind-bag { width: 90px; height: 110px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 3px dashed rgba(255,255,255,0.5); transition: transform 0.2s, filter 0.2s; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        
+        /* Hiệu ứng rung lắc khi di chuột (Unbox Feeling) */
+        .blind-bag:hover { animation: shake 0.5s infinite; filter: brightness(1.2); cursor: pointer; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-1px, -2px) rotate(-2deg); }
+            40% { transform: translate(-3px, 0px) rotate(2deg); }
+            60% { transform: translate(3px, 2px) rotate(0deg); }
+            80% { transform: translate(1px, -1px) rotate(2deg); }
+            100% { transform: translate(-1px, 2px) rotate(-1deg); }
+        }
+        .blind-bag:active { transform: scale(0.9); animation: none; }
+        
+        .bag-icon { font-size: 2.8rem; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4)); margin-bottom: 5px;}
+        .bag-text { font-size: 0.75rem; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); letter-spacing: 1px;}
+
+        /* Màu sắc công nghệ năng lượng */
+        .bag-color-1 { background: linear-gradient(135deg, #0284c7, #0369a1); } /* Xanh dương */
+        .bag-color-2 { background: linear-gradient(135deg, #10b981, #047857); } /* Xanh lá */
+        .bag-color-3 { background: linear-gradient(135deg, #f59e0b, #b45309); } /* Cam */
+        .bag-color-4 { background: linear-gradient(135deg, #8b5cf6, #5b21b6); } /* Tím */
+
+        .popup-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .popup-box { background: #0f172a; border: 2px solid #ef4444; border-radius: 12px; padding: 20px; text-align: center; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(239,68,68,0.4); }
+        .popup-title { font-size: 1.2rem; margin-bottom: 10px; font-weight: bold; text-transform: uppercase;}
+        .popup-desc { font-size: 0.95rem; color: #cbd5e1; margin-bottom: 15px; line-height: 1.4; }
+        .ans-btn { background: #1e293b; color: #fff; border: 1px solid #475569; padding: 10px; margin-bottom: 8px; width: 100%; border-radius: 8px; text-align: left; cursor: pointer; font-size: 0.95rem;}
+        .ans-btn:active { background: #334155; }
+        #error-msg { color: #ef4444; font-size: 0.9rem; margin-top: 10px; display: none; text-align: center; font-weight: bold;}
+    </style>
+</head>
+<body>
+    <div class="cinematic-bg"></div>
+    <div class="grid-layer"></div>
+    <button id="mute-btn" class="mute-btn" onclick="toggleMute()">🔊</button>
+
+    <!-- MÀN HÌNH ĐĂNG NHẬP -->
+    <div id="login-screen" class="screen active">
+        <h2 style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 5px; font-weight: 600; letter-spacing: 2px;">KIẾN TẠO HỆ THỐNG CÂN BẰNG</h2>
+        <h1>HỆ THỐNG KÉP<br><span style="font-size: 1.1rem; color: #facc15; display: block; margin-top: 5px;">TỰ NHIÊN & DÂN CƯ</span></h1>
+        
+        <div style="background: rgba(15,23,42,0.85); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: justify; font-size: 0.9rem; color: #e2e8f0; border-left: 4px solid #38bdf8; line-height: 1.5;">
+            <b>Luật chơi (Anti-cheat):</b> Trạm kiểm soát báo 2 lỗi tự nhiên & dân số ngẫu nhiên. Em phải <b>CHỌN 2 NGHỀ NGHIỆP</b> tương thích để kích hoạt!<br>
+            <span style="color: #facc15;"><b>Đặc quyền:</b> Chỉ Đặc nhiệm hoàn thành 8/8 hệ thống (Không mất tim) mới được tự chọn Phần thưởng. Sai sót sẽ phải bốc rủi ro!</span>
+        </div>
+
+        <div class="input-group"><input type="text" id="playerName" placeholder="Nhập Họ và Tên..." autocomplete="off"></div>
+        <div class="input-group"><input type="text" id="playerClass" placeholder="Nhập Lớp (VD: 12A1)..." autocomplete="off"></div>
+        <button id="btn-start" class="btn" onclick="initAudioAndStart()">🚀 KHỞI ĐỘNG CỖ MÁY</button>
+        <p id="error-msg">Vui lòng nhập đầy đủ thông tin!</p>
+        
+        <div id="limit-info" style="margin-top: 15px; text-align: center; display: none; background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px; border: 1px solid #ef4444;">
+            <p style="color: #fca5a5; font-size: 0.85rem; margin-bottom: 5px;">Hệ thống đang khóa tạm thời để bảo trì.</p>
+            <div id="login-cooldown" style="font-size: 1.5rem; color: #facc15; font-weight: bold; font-family: monospace; cursor: pointer; display: inline-block; padding: 5px 15px; border-radius: 8px; transition: background 0.2s;" onclick="teacherUnlock()">00:00</div>
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH CHƠI GAME -->
+    <div id="game-screen" class="screen">
+        <div class="hud">
+            <div class="hud-item"><span class="hud-title">Sinh Mệnh</span><span class="hud-value hearts" id="ui-hearts">❤️❤️❤️</span></div>
+            <div class="hud-item"><span class="hud-title">Khôi phục</span><span class="hud-value"><span id="ui-score" style="color: #38bdf8;">0</span> / 8</span></div>
+        </div>
+        <div class="system-panel" id="system-panel"></div>
+        <div class="timer-bar"><div class="timer-fill" id="ui-timer"></div></div>
+        <div style="width: 100%; text-align: center; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase;">Chạm để chọn 2 giải pháp:</div>
+        <div class="job-grid" id="job-grid"></div>
+        <button id="submit-btn" class="submit-btn" onclick="checkEquilibrium()">⚡ KÍCH HOẠT HỆ THỐNG</button>
+    </div>
+
+    <!-- POPUP THÀNH CÔNG -->
+    <div class="popup-overlay" id="success-popup">
+        <div class="popup-box" style="border-color: #22c55e;">
+            <div class="popup-title" style="color: #4ade80;">✅ CÂN BẰNG THIẾT LẬP</div>
+            <div class="popup-desc" style="color: #fff; font-weight: bold;">Cấu trúc không gian đã ổn định!</div>
+            <div id="success-consequence" style="text-align: left; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-size: 0.85rem; color: #facc15; margin-bottom: 15px; border-left: 3px solid #facc15;"></div>
+            <button class="btn" style="background: #16a34a; box-shadow: none;" onclick="nextLevelSuccess()">Tiến vào khu vực tiếp theo</button>
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH KẾT QUẢ - PHÂN CẤP RƯƠNG PHẦN THƯỞNG -->
+    <div id="result-screen" class="screen">
+        <h2 id="result-title" style="margin-bottom: 10px; font-size: 1.5rem; text-align: center;"></h2>
+        <p id="result-subtitle" style="margin-bottom: 15px; color: #cbd5e1; text-align: center; font-size: 0.9rem; line-height: 1.4;"></p>
+
+        <!-- KHU VỰC 1: NẾU HOÀN HẢO ĐƯỢC TỰ CHỌN (CHỈ CÓ THẺ XỊN) -->
+        <div id="reward-selection" style="display: none; width: 100%;">
+            <p style="color: #facc15; font-weight: bold; margin-bottom: 10px; text-align: center;">⭐ ĐẶC QUYỀN CHỌN PHẦN THƯỞNG:</p>
+            <button class="btn" style="margin-bottom: 10px; background: #1e293b; border: 1px solid #38bdf8; font-size: 1rem; padding: 12px;" onclick="issuePerfectVoucher(0)">💳 ĐẶC QUYỀN NÂNG CẤP (+0.5đ TX)</button>
+            <button class="btn" style="margin-bottom: 10px; background: #1e293b; border: 1px solid #38bdf8; font-size: 1rem; padding: 12px;" onclick="issuePerfectVoucher(1)">🛡️ KHIÊN BẢO VỆ (Miễn 1 lỗi mã đề)</button>
+        </div>
+
+        <!-- KHU VỰC 2: NẾU SAI SÓT PHẢI BỐC TÚI MÙ (THẺ CẤP THẤP HOẶC RỖNG) -->
+        <div id="blind-bag-container">
+            <p style="color: #facc15; font-weight: bold; text-align: center; text-transform: uppercase;">📦 Hãy kích hoạt 1 lõi năng lượng để nhận thưởng!</p>
+            <div class="blind-bags-grid" id="blind-bag-selection">
+                <!-- Sinh ngẫu nhiên từ JS -->
+            </div>
+        </div>
+        
+        <!-- VOUCHER CARD -->
+        <div id="voucher-card" style="display: none;">
+            <div class="watermark">VÕ VĂN KIỆT</div>
+            <div class="voucher-header">
+                <div class="voucher-title">HỒ SƠ MẬT</div>
+                <div class="voucher-desc" style="color: #e11d48; font-size: 1.1rem;" id="reward-name">TÊN QUYỀN LỢI</div>
+                <div class="voucher-desc" id="reward-desc" style="font-weight: normal;">Chi tiết quyền lợi</div>
+            </div>
+            
+            <div class="voucher-player">
+                <div class="player-name" id="v-name">NGUYỄN VĂN A</div>
+                <div class="player-class">LỚP: <span id="v-class">12A1</span></div>
+            </div>
+
+            <div class="voucher-rank" id="reward-rank">🏆 DANH HIỆU</div>
+            <div class="voucher-score" id="reward-score"></div>
+            
+            <div class="voucher-meta">
+                <span>⏱️ <span id="v-time"></span></span>
+                <span class="voucher-hash" id="v-hash"></span>
+            </div>
+        </div>
+
+        <button id="btn-capture" class="btn" style="background: linear-gradient(45deg, #c026d3, #db2777); margin-bottom: 10px; display: none;" onclick="captureVoucher()">📸 LƯU ẢNH MINH CHỨNG</button>
+        <button class="btn" style="background: #334155;" onclick="finishGameSession()">NGẮT KẾT NỐI</button>
+    </div>
+
+    <!-- CÁC POPUP GAME OVER -->
+    <div class="popup-overlay" id="feedback-popup">
+        <div class="popup-box">
+            <div class="popup-title" style="color: #ef4444;">🚨 MẤT CÂN BẰNG HỆ THỐNG</div>
+            <div class="popup-desc" id="feedback-text"></div>
+            <button class="btn" style="background: #334155; box-shadow: none;" onclick="nextLevelFail()">Khởi động lại vòng lặp</button>
+        </div>
+    </div>
+
+    <div class="popup-overlay" id="revive-popup">
+        <div class="popup-box">
+            <div class="popup-title" style="color: #38bdf8;">⚕️ CẤP CỨU HỆ THỐNG</div>
+            <div class="popup-desc" style="margin-bottom: 10px; font-size: 0.85rem;">Xác thực kiến thức Địa lí để khôi phục 1 Sinh mệnh. Sai là hệ thống sập!</div>
+            <div id="revive-question" style="font-weight: bold; margin-bottom: 15px; color: #fff; text-align: left; font-size: 1rem;"></div>
+            <div id="revive-answers"></div>
+        </div>
+    </div>
+
+    <script>
+        let isMuted = false;
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊";
+            document.getElementById('mute-btn').style.borderColor = isMuted ? "#ef4444" : "#334155";
+        }
+
+        let cooldownInterval;
+        function checkLimits() {
+            const cd = parseInt(localStorage.getItem("m34_cd") || "0");
+            if (cd > Date.now()) { showCooldown(cd); return false; }
+            return true;
+        }
+
+        function showCooldown(endTime) {
+            document.getElementById("limit-info").style.display = "block";
+            document.getElementById("btn-start").disabled = true;
+            
+            const tEl = document.getElementById("login-cooldown");
+            if(cooldownInterval) clearInterval(cooldownInterval);
+            cooldownInterval = setInterval(() => {
+                const diff = endTime - Date.now();
+                if(diff <= 0) {
+                    clearInterval(cooldownInterval);
+                    localStorage.removeItem("m34_cd");
+                    document.getElementById("limit-info").style.display = "none";
+                    document.getElementById("btn-start").disabled = false;
+                }
+                else tEl.innerText = `${Math.floor(diff/1000/60).toString().padStart(2,'0')}:${Math.floor((diff/1000)%60).toString().padStart(2,'0')}`;
+            }, 1000);
+        }
+
+        let unlockTaps = 0, unlockTimer;
+        function teacherUnlock() {
+            unlockTaps++; clearTimeout(unlockTimer);
+            unlockTimer = setTimeout(() => { unlockTaps = 0; }, 2000);
+            if (unlockTaps >= 5) {
+                unlockTaps = 0; let pin = prompt("🔐 HỆ THỐNG GIÁO VIÊN\nNhập mã PIN:");
+                if (pin === "3434") { localStorage.removeItem("m34_cd"); clearInterval(cooldownInterval); alert("✅ Đã ghi đè hệ thống!"); location.reload(); }
+            }
+        }
+
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        function playSnd(t) {
+            if (!audioCtx || isMuted) return;
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
+            if (t === 'tap') { o.type='sine'; o.frequency.setValueAtTime(600, audioCtx.currentTime); g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.05); o.start(); o.stop(audioCtx.currentTime+0.05); }
+            else if (t === 'ok') { o.type='triangle'; o.frequency.setValueAtTime(800, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime+0.2); g.gain.setValueAtTime(0.2, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.2); o.start(); o.stop(audioCtx.currentTime+0.2); }
+            else if (t === 'fail') { o.type='square'; o.frequency.setValueAtTime(300, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime+0.5); g.gain.setValueAtTime(0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.5); o.start(); o.stop(audioCtx.currentTime+0.5); }
+        }
+
+        let pName = "", pClass = "", currentMission = 0, score = 0, hearts = 3, timerInterval, timeLeft = 30, baseTime = 30;
+        let selectedJobs = [], isLevelActive = false, usedRevive = false;
+        let gameDeck = []; 
+        
+        // CẤU TRÚC 2 RƯƠNG PHẦN THƯỞNG VỚI MÃ PREFIX HASH
+        const perfectRewards = [
+            { name: "ĐẶC QUYỀN NÂNG CẤP", desc: "Cộng 0.5 điểm Thường xuyên", prefix: "A-RANK" },
+            { name: "KHIÊN BẢO VỆ", desc: "Không trừ điểm 1 lỗi tô sai mã đề", prefix: "SHIELD" }
+        ];
+
+        const blindBagRewards = [
+            { name: "ĐẶC QUYỀN TÍCH LŨY", desc: "Cộng 0.25 điểm Thường xuyên", prefix: "B-BAG" },
+            { name: "BÙ ĐẮP THIỆT HẠI", desc: "Chấp nhận 1 câu tô sai mã đáp án nhưng kết quả tính đúng", prefix: "B-BAG" },
+            { name: "THẺ RỖNG", desc: "Chúc bạn may mắn lần sau! Hệ thống không cấp quyền lợi.", prefix: "EMPTY" }
+        ];
+
+        const disasters = [
+            "Kinh tế đình trệ, đói nghèo lan rộng toàn vùng!",
+            "Sinh thái sụp đổ, bão lũ và biến đổi khí hậu tàn phá!",
+            "Cạn kiệt tài nguyên, đứt gãy chuỗi cung ứng cục bộ!"
+        ];
+
+        function initAudioAndStart() { initAudio(); startGame(); }
+
+        function buildDynamicDeck() {
+            let deck = []; let shuffledRegions = [...regionPools].sort(() => Math.random() - 0.5);
+            shuffledRegions.forEach(region => {
+                let rNature = region.natures[Math.floor(Math.random() * region.natures.length)];
+                let rPop = region.pops[Math.floor(Math.random() * region.pops.length)];
+                let rCons = region.consequences[Math.floor(Math.random() * region.consequences.length)];
+                let rCorrectJobs = [...region.correctJobs].sort(() => Math.random() - 0.5).slice(0, 2).map(j => ({...j, isCorrect: true}));
+                let rWrongJobs = [...region.wrongJobs].sort(() => Math.random() - 0.5).slice(0, 2).map(j => ({...j, isCorrect: false}));
+                let finalJobs = [...rCorrectJobs, ...rWrongJobs].sort(() => Math.random() - 0.5);
+                deck.push({ prov: region.prov, nature: rNature, pop: rPop, consequence: rCons, jobs: finalJobs });
+            });
+            return deck;
+        }
+
+        function startGame() {
+            pName = document.getElementById("playerName").value.trim();
+            pClass = document.getElementById("playerClass").value.trim();
+            if(!pName || !pClass) { document.getElementById("error-msg").style.display = "block"; return; }
+            document.getElementById("error-msg").style.display = "none";
+            if (!checkLimits()) return; 
+
+            document.getElementById("login-screen").classList.remove("active");
+            document.getElementById("game-screen").classList.add("active");
+
+            score = 0; hearts = 3; currentMission = 0; usedRevive = false;
+            document.getElementById("ui-hearts").innerText = "❤️❤️❤️";
+            if(typeof regionPools === 'undefined') { alert("Lỗi: Không tìm thấy file data.js"); return; }
+            gameDeck = buildDynamicDeck();
+            document.getElementById("ui-score").innerHTML = `0</span> / 8`;
+            loadMission();
+        }
+
+        function loadMission() {
+            if (currentMission >= gameDeck.length) { endGame(true); return; }
+            isLevelActive = true; selectedJobs = [];
+            document.getElementById("ui-score").innerHTML = `${score}</span> / 8`;
+            document.getElementById("submit-btn").classList.remove("show");
+            document.body.classList.remove("danger-vignette");
+            
+            const mission = gameDeck[currentMission];
+            document.getElementById("system-panel").innerHTML = `
+                <div class="province-badge">📍 ${mission.prov}</div>
+                <div class="panel-content">
+                    <div class="alert-box alert-nature"><div class="alert-title">LỖI TỰ NHIÊN:</div><div class="alert-desc">${mission.nature}</div></div>
+                    <div class="alert-box alert-pop"><div class="alert-title">LỖI DÂN SỐ:</div><div class="alert-desc">${mission.pop}</div></div>
+                </div>
+            `;
+
+            let jobsHtml = "";
+            mission.jobs.forEach((job, index) => {
+                jobsHtml += `<button class="job-btn" id="job_${index}" onclick="toggleJob(${index}, ${job.isCorrect}, '${job.reason.replace(/'/g, "\\'")}')">
+                    <span class="job-icon">${job.icon}</span><span>${job.title}</span>
+                </button>`;
+            });
+            document.getElementById("job-grid").innerHTML = jobsHtml;
+
+            if(currentMission >= 2) baseTime = 25; 
+            if(currentMission >= 4) baseTime = 20; 
+            if(currentMission >= 6) baseTime = 15; 
+            
+            timeLeft = baseTime; updateTimer(); clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1; updateTimer();
+                if(timeLeft <= 5.0 && timeLeft > 0) document.body.classList.add("danger-vignette");
+                if(timeLeft <= 0) { 
+                    clearInterval(timerInterval); document.body.classList.remove("danger-vignette"); 
+                    processResult(false, "Quá chậm! Hệ thống đã sụp đổ." + getOptimalSolutionString()); 
+                }
+            }, 100);
+        }
+
+        function updateTimer() {
+            const pct = (timeLeft / baseTime) * 100;
+            document.getElementById("ui-timer").style.width = pct + "%";
+            document.getElementById("ui-timer").className = pct < 30 ? "timer-fill warning" : "timer-fill";
+        }
+
+        function toggleJob(id, isCorrect, reason) {
+            if(!isLevelActive) return; playSnd('tap');
+            const btn = document.getElementById(`job_${id}`);
+            const submitBtn = document.getElementById("submit-btn");
+            if(selectedJobs.some(j => j.id === id)) {
+                selectedJobs = selectedJobs.filter(j => j.id !== id);
+                btn.classList.remove("selected");
+            } else {
+                if(selectedJobs.length >= 2) return;
+                selectedJobs.push({ id, isCorrect, reason });
+                btn.classList.add("selected");
+            }
+            if(selectedJobs.length === 2) submitBtn.classList.add("show"); else submitBtn.classList.remove("show");
+        }
+
+        function getOptimalSolutionString() {
+            if(!gameDeck || !gameDeck[currentMission]) return "";
+            let correctTitles = gameDeck[currentMission].jobs.filter(j => j.isCorrect).map(j => `🔹 ${j.title}`);
+            return `<br><br><div style='color:#4ade80; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; border-left:3px solid #4ade80; font-size: 0.9rem;'><b>💡 GIẢI PHÁP TỐI ƯU:</b><br>${correctTitles.join('<br>')}</div>`;
+        }
+
+        function checkEquilibrium() {
+            if(selectedJobs.length !== 2) return;
+            document.getElementById("submit-btn").classList.remove("show");
+            isLevelActive = false; clearInterval(timerInterval); document.body.classList.remove("danger-vignette");
+            
+            let allCorrect = selectedJobs.every(j => j.isCorrect);
+            if(allCorrect) {
+                playSnd('ok'); score += 1; 
+                document.getElementById("success-consequence").innerHTML = gameDeck[currentMission].consequence;
+                document.getElementById("success-popup").style.display = "flex";
+            } else {
+                let wrongJob = selectedJobs.find(j => !j.isCorrect);
+                processResult(false, wrongJob.reason + getOptimalSolutionString());
+            }
+        }
+        
+        function nextLevelSuccess() { document.getElementById("success-popup").style.display = "none"; currentMission++; loadMission(); }
+
+        function processResult(isWin, msg) {
+            if(!isWin) {
+                playSnd('fail'); hearts--; 
+                document.getElementById("ui-hearts").innerText = "❤️".repeat(hearts) + "🖤".repeat(3 - hearts);
+                document.getElementById("feedback-text").innerHTML = msg;
+                document.getElementById("feedback-popup").style.display = "flex";
+            }
+        }
+
+        function nextLevelFail() {
+            document.getElementById("feedback-popup").style.display = "none";
+            if (hearts <= 0) {
+                if (!usedRevive) showRevivePopup(); else endGame(false);
+            } else {
+                selectedJobs = [];
+                Array.from(document.getElementsByClassName("job-btn")).forEach(b => b.classList.remove("selected"));
+                document.getElementById("submit-btn").classList.remove("show");
+                isLevelActive = true; timeLeft = baseTime;
+                timerInterval = setInterval(() => {
+                    timeLeft -= 0.1; updateTimer();
+                    if(timeLeft <= 5.0 && timeLeft > 0) document.body.classList.add("danger-vignette");
+                    if(timeLeft <= 0) { clearInterval(timerInterval); document.body.classList.remove("danger-vignette"); processResult(false, "Quá chậm! Hệ thống đã sụp đổ." + getOptimalSolutionString()); }
+                }, 100);
+            }
+        }
+
+        function showRevivePopup() {
+            usedRevive = true;
+            const q = reviveQuestions[Math.floor(Math.random() * reviveQuestions.length)];
+            document.getElementById("revive-question").innerText = q.q;
+            let ansHtml = "";
+            q.options.forEach((opt, idx) => { ansHtml += `<button class="ans-btn" onclick="checkRevive(${idx === q.ans})">${opt}</button>`; });
+            document.getElementById("revive-answers").innerHTML = ansHtml;
+            document.getElementById("revive-popup").style.display = "flex";
+        }
+
+        function checkRevive(isCorrect) {
+            document.getElementById("revive-popup").style.display = "none";
+            if (isCorrect) {
+                playSnd('ok'); hearts = 1; document.getElementById("ui-hearts").innerText = "❤️🖤🖤";
+                selectedJobs = []; isLevelActive = true; timeLeft = baseTime;
+                Array.from(document.getElementsByClassName("job-btn")).forEach(b => b.classList.remove("selected"));
+                document.getElementById("submit-btn").classList.remove("show");
+                timerInterval = setInterval(() => {
+                    timeLeft -= 0.1; updateTimer();
+                    if(timeLeft <= 5.0 && timeLeft > 0) document.body.classList.add("danger-vignette");
+                    if(timeLeft <= 0) { clearInterval(timerInterval); document.body.classList.remove("danger-vignette"); processResult(false, "Quá chậm!" + getOptimalSolutionString()); }
+                }, 100);
+            } else {
+                playSnd('fail'); endGame(false);
+            }
+        }
+
+        // GIAO DIỆN TÚI MÙ CYBERPUNK (BLIND BAGS)
+        function setupBlindBags() {
+            const decors = ["🔋", "🧬", "🛰️", "📦", "⚙️", "📡"];
+            let html = "";
+            for(let i = 1; i <= 3; i++) {
+                let randomDecor = decors.splice(Math.floor(Math.random() * decors.length), 1)[0];
+                let randomClass = `bag-color-${Math.floor(Math.random() * 4) + 1}`;
+                html += `<div class="blind-bag ${randomClass}" onclick="openBlindBag()">
+                    <div class="bag-icon">${randomDecor}</div>
+                    <div class="bag-text">LÕI NĂNG LƯỢNG</div>
+                </div>`;
+            }
+            document.getElementById("blind-bag-selection").innerHTML = html;
+        }
+
+        function openBlindBag() {
+            playSnd('ok');
+            triggerConfetti();
+            document.getElementById("blind-bag-container").style.display = "none";
+            // Bốc ngẫu nhiên từ rương blindBagRewards (Chỉ có hạng B hoặc thẻ Rỗng)
+            let randomIndex = Math.floor(Math.random() * blindBagRewards.length); 
+            renderVoucher(blindBagRewards[randomIndex]);
+        }
+        
+        function issuePerfectVoucher(index) {
+            playSnd('ok');
+            document.getElementById("reward-selection").style.display = "none";
+            renderVoucher(perfectRewards[index]);
+        }
+
+        function renderVoucher(rewardObj) {
+            document.getElementById("reward-name").innerText = rewardObj.name;
+            document.getElementById("reward-desc").innerText = rewardObj.desc;
+            
+            // Xử lý logic Thẻ Rỗng (Tô xám)
+            if(rewardObj.prefix === "EMPTY") {
+                document.getElementById("reward-name").style.color = "#475569";
+                document.getElementById("reward-rank").style.color = "#475569";
+            }
+            
+            document.getElementById("v-name").innerText = pName;
+            document.getElementById("v-class").innerText = pClass;
+            document.getElementById("v-time").innerText = new Date().toLocaleString('vi-VN');
+            
+            // GẮN TIỀN TỐ VÀO MÃ HASH ĐỂ GIÁO VIÊN DỄ LỌC TRÊN EXCEL
+            let randomCode = Math.random().toString(36).substring(2,8).toUpperCase();
+            document.getElementById("v-hash").innerText = `${rewardObj.prefix}-${randomCode}`;
+            
+            document.getElementById("voucher-card").style.display = "block";
+            document.getElementById("btn-capture").style.display = "block";
+        }
+
+        function endGame(isWin) {
+            clearInterval(timerInterval);
+            document.body.classList.remove("danger-vignette");
+            document.getElementById("game-screen").classList.remove("active");
+            document.getElementById("result-screen").classList.add("active");
+
+            if(isWin) {
+                document.getElementById("result-title").innerText = "🎉 CÂN BẰNG HỆ THỐNG!";
+                document.getElementById("result-title").style.color = "#38bdf8";
+                triggerConfetti();
+                document.getElementById("reward-score").innerText = `THÀNH TÍCH: Khôi phục ${score}/8 hệ thống`;
+
+                if(hearts === 3) {
+                    // CHƠI HOÀN HẢO -> ĐƯỢC QUYỀN CHỌN RƯƠNG CAO CẤP
+                    document.getElementById("result-subtitle").innerHTML = "Hoạt động hoàn hảo.<br>Bạn được <b>TỰ DO CHỌN</b> Đặc quyền cao cấp!";
+                    document.getElementById("reward-rank").innerText = "🏆 KIẾN TRÚC SƯ TRƯỞNG";
+                    document.getElementById("reward-selection").style.display = "block";
+                    document.getElementById("blind-bag-container").style.display = "none";
+                } else {
+                    // BỊ MẤT TIM -> PHẢI XÉ TÚI MÙ (RƯƠNG HẠNG B)
+                    document.getElementById("result-subtitle").innerHTML = "Hệ thống có tổn thất.<br>Bạn chỉ được bốc <b>LÕI NĂNG LƯỢNG MÙ</b> ngẫu nhiên!";
+                    document.getElementById("reward-rank").innerText = "🎖️ KỸ SƯ VẬN HÀNH";
+                    document.getElementById("reward-selection").style.display = "none";
+                    setupBlindBags();
+                    document.getElementById("blind-bag-container").style.display = "block";
+                }
+            } else {
+                // UPDATE GAME OVER VỚI CÁC THÔNG BÁO THẢM HỌA KHỐC LIỆT
+                document.getElementById("result-title").innerText = "❌ BÁO CÁO THẢM HỌA!";
+                document.getElementById("result-title").style.color = "#ef4444";
+                
+                let randomDisaster = disasters[Math.floor(Math.random() * disasters.length)];
+                document.getElementById("result-subtitle").innerHTML = `Quy hoạch sai lầm khiến hệ thống sụp đổ.<br><b>HỆ QUẢ: ${randomDisaster}</b>`;
+                
+                const cdTime = Date.now() + 15 * 60 * 1000;
+                localStorage.setItem("m34_cd", cdTime);
+            }
+        }
+
+        function finishGameSession() { location.reload(); }
+        window.onload = checkLimits;
+        
+        function triggerConfetti() {
+            var end = Date.now() + 3000;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: {x: 0}, colors: ['#38bdf8', '#facc15'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: {x: 1}, colors: ['#38bdf8', '#facc15'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+        
+        function captureVoucher() {
+            document.getElementById("mute-btn").style.display = "none";
+            html2canvas(document.getElementById("voucher-card"), {backgroundColor: "#0f172a"}).then(canvas => {
+                let a = document.createElement("a"); a.href = canvas.toDataURL("image/png");
+                a.download = `HoSoMat_${pClass}_${pName.replace(/\s+/g, '')}.png`; a.click();
+                document.getElementById("mute-btn").style.display = "flex";
+            });
+        }
+    </script>
+</body>
+</html>
